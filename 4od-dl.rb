@@ -163,6 +163,10 @@ def download_4od(prog_id)
   if not success
     raise "Something went wrong running AtomicParsley :(. Your file may not be properly tagged."
   end
+  
+  @log.debug "Deleting #{out_file}.flv"
+  File.delete("#{out_file}.flv")
+  
 end
 
 
