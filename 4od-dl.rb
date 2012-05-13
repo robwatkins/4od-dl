@@ -41,17 +41,14 @@ end
 def download_4od(prog_id)
   #1. Read the AIS data from C4. This gives the info required to get the flv via rtmpdump
   url = "http://ais.channel4.com/asset/#{prog_id}"
-  @log.info "Downloading AIS data from 4od at URL #{@url}"
-
   begin
-    open(url) { |f| @response = f.read }
+      doc = open(url) { |f| Hpricot(f) }
   rescue OpenURI::HTTPError => the_error
-    raise "Cannot download from url #{url}. Error is: #{the_error.message}"
+    @log.error "Cannot download from url #{url}. Error is: #{the_error.message}"
+    return
   end
-
-
+  
   #Parse it - the inspiration for this comes from http://code.google.com/p/nibor-xbmc-repo/ too.
-  doc = Hpricot(@response)
   token =  (doc/"//token").text
   epid =  (doc/"//e").text
   cdn =  (doc/"//cdn").text
@@ -87,12 +84,12 @@ def download_4od(prog_id)
   #read program data to generate the filename
   url = "http://www.channel4.com/programmes/asset/#{prog_id}"
   begin
-    open(url) { |f| @prog_info_response = f.read }
+      assetInfo = open(url) { |f| Hpricot(f) }
   rescue OpenURI::HTTPError => the_error
     @log.error "Cannot download from url #{url}. Error is: #{the_error.message}"
-    exit 1
+    return
   end
-  assetInfo = Hpricot(@prog_info_response)
+  
   episodeNumber = (assetInfo/"//episodenumber").text
   seriesNumber = (assetInfo/"//seriesnumber").text
   brandTitle = (assetInfo/"//brandtitle").text
@@ -102,8 +99,14 @@ def download_4od(prog_id)
   progGuideUrl = (assetInfo/"//episodeguideurl").text
 
   #read program guide to get additional metadata
-  seriesInfo = open("http://www.channel4.com#{progGuideUrl}") { |f| Hpricot(f) }
-
+  url = "http://www.channel4.com#{progGuideUrl}"
+  begin
+      seriesInfo = open(url) { |f| Hpricot(f) }
+  rescue OpenURI::HTTPError => the_error
+    @log.error "Cannot download from url #{url}. Error is: #{the_error.message}"
+    return
+  end
+  
   synopsisElem = seriesInfo.at("//meta[@name='synopsis']")
   desc = synopsisElem.nil? ? "" : synopsisElem['content']
 
@@ -131,9 +134,9 @@ def download_4od(prog_id)
   command += '-C O:1 -C O:0 '
   command += '--flashVer "WIN 10,3,183,7" '
   command += '--swfVfy "http://www.channel4.com/static/programmes/asset/flash/swf/4odplayer_am2.swf" '
-  @log.info command
+  @log.debug command
 
-  @log.info "Downloading file for #{prog_id}.."
+  @log.info "Downloading file for #{prog_id} - saving to #{out_file}.flv"
   success = system(command)
 
   if not success
