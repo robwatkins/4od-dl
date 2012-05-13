@@ -8,15 +8,11 @@ require 'open-uri'
 @log = Logger.new(STDOUT)
 @log.sev_threshold = Logger::INFO
 
-@actually_download = true
-
 #Method to decode an auth token for use with rtmpdump
 #Idea mostly taken from http://code.google.com/p/nibor-xbmc-repo/source/browse/trunk/plugin.video.4od/fourOD_token_decoder.py
-#Thanks to nibor for the code!
+#Thanks to nibor for writing this in the first place!
 
 def decode_token(token)
-
-  @log.debug "Token is #{token}"
   encryptedBytes = Base64.decode64(token)
   key = "STINGMIMI"
   blowfish = Crypt::Blowfish.new(key)
@@ -33,32 +29,26 @@ def decode_token(token)
   @log.debug "position: #{position} length #{encryptedBytes.length} decrypted length #{decrypted_token.length}"
 
   npad = decrypted_token.slice(-1)
-
   if (npad > 0 && npad < 9)
     decrypted_token = decrypted_token.slice(0, decrypted_token.length-npad)
   end
-  
+
   return decrypted_token
 end
 
 
 #download 4od
 def download_4od(prog_id)
-    #1. Read the AIS data from C4. This gives the info required to get the flv via rtmpdump
-  if (@actually_download)
-    url = "http://ais.channel4.com/asset/#{prog_id}"
-    @log.info "Downloading AIS data from 4od at URL #{@url}"
+  #1. Read the AIS data from C4. This gives the info required to get the flv via rtmpdump
+  url = "http://ais.channel4.com/asset/#{prog_id}"
+  @log.info "Downloading AIS data from 4od at URL #{@url}"
 
-    begin
-      open(url) { |f| @response = f.read }
-    rescue OpenURI::HTTPError => the_error
-      raise "Cannot download from url #{url}. Error is: #{the_error.message}"
-    end
-
-  else
-    @log.info "reading from local file"
-    @response = File.open("#{prog_id}.xml").readlines.join
+  begin
+    open(url) { |f| @response = f.read }
+  rescue OpenURI::HTTPError => the_error
+    raise "Cannot download from url #{url}. Error is: #{the_error.message}"
   end
+
 
   #Parse it - the inspiration for this comes from http://code.google.com/p/nibor-xbmc-repo/ too.
   doc = Hpricot(@response)
@@ -95,37 +85,33 @@ def download_4od(prog_id)
   end
 
   #read program data to generate the filename
-  if(@actually_download)
-    url = "http://www.channel4.com/programmes/asset/#{prog_id}"
-    begin
-      open(url) { |f| @prog_info_response = f.read }
-    rescue OpenURI::HTTPError => the_error
-      @log.error "Cannot download from url #{url}. Error is: #{the_error.message}"
-      exit 1
-    end
-  else
-    @prog_info_response = File.open("#{prog_id}_asset.xml").readlines.join
+  url = "http://www.channel4.com/programmes/asset/#{prog_id}"
+  begin
+    open(url) { |f| @prog_info_response = f.read }
+  rescue OpenURI::HTTPError => the_error
+    @log.error "Cannot download from url #{url}. Error is: #{the_error.message}"
+    exit 1
   end
-
   assetInfo = Hpricot(@prog_info_response)
   episodeNumber = (assetInfo/"//episodenumber").text
   seriesNumber = (assetInfo/"//seriesnumber").text
   brandTitle = (assetInfo/"//brandtitle").text
   epId = (assetInfo/"//programmeid").text
 
+  #progGuideUrl is used to pull out metadata from the CH4 website
   progGuideUrl = (assetInfo/"//episodeguideurl").text
-  
+
   #read program guide to get additional metadata
   seriesInfo = open("http://www.channel4.com#{progGuideUrl}") { |f| Hpricot(f) }
-  
+
   synopsisElem = seriesInfo.at("//meta[@name='synopsis']")
   desc = synopsisElem.nil? ? "" : synopsisElem['content']
-  
+
   episodeElem = seriesInfo.at("//meta[@name='episodeTitle']")
   episodeTitle = episodeElem.nil? ? "" : episodeElem['content']
-  
-  #build filename based on metadata. should be "showname_epid_title" but shorten that data does not exist
-  if episodeNumber.empty? && brandTitle == episodeTitle 
+
+  #build filename based on metadata. should be "showname_epid_title" but shorten if part of data does not exist
+  if episodeNumber.empty? && brandTitle == episodeTitle
     out_file = "#{brandTitle}"
   elsif episodeNumber.empty?
     out_file = "#{brandTitle}__#{episodeTitle}"
@@ -134,9 +120,9 @@ def download_4od(prog_id)
   else
     out_file = "#{brandTitle}__episode_#{episodeNumber}__#{episodeTitle}"
   end
-  
+
   out_file.gsub!(/[^0-9A-Za-z.\-]/, '_') #replace non alphanumerics with underscores
-  
+
   #build rtmpdump command
   command = "rtmpdump --rtmp \"#{rtmpUrl}\" "
   command += "--app \"#{app}\" "
@@ -147,7 +133,7 @@ def download_4od(prog_id)
   command += '--swfVfy "http://www.channel4.com/static/programmes/asset/flash/swf/4odplayer_am2.swf" '
   @log.info command
 
-  @log.info "Downloading file.."
+  @log.info "Downloading file for #{prog_id}.."
   success = system(command)
 
   if not success
@@ -155,22 +141,22 @@ def download_4od(prog_id)
   end
 
   @log.info "Download done. Converting to mp4."
-  
+
   ffmpeg_command ="ffmpeg -i #{out_file}.flv -vcodec copy -acodec copy #{out_file}.mp4"
   success = system(ffmpeg_command)
 
   if not success
     raise "Something went wrong running ffmpeg :(. Your file may not have converted properly."
   end
-  
+
   @log.info "Mp4 created. Tagging."
-  
+
   fullTitle = "#{episodeNumber}. #{episodeTitle}"
   atp_command = "AtomicParsley #{Dir.pwd}/#{out_file}.mp4 --TVNetwork \"Channel4/4od\" --TVShowName \"#{brandTitle}\" --TVSeasonNum #{seriesNumber} --TVEpisodeNum #{episodeNumber} --stik \"TV Show\" --description \"#{desc}\" --TVEpisode \"#{epId}\" --title \"#{fullTitle}\" --overWrite"
-  
+
   @log.debug "#{atp_command}"
   success = system(atp_command)
-  
+
   if not success
     raise "Something went wrong running AtomicParsley :(. Your file may not be properly tagged."
   end
@@ -218,12 +204,11 @@ prog_ids.each do |prog_id|
   rescue
     @log.error "Cannot parse program ID #{prog_id}. Is it a valid program ID?"
   end
-  
+
   #now download
   begin
-    download_4od(prog_id) 
+    download_4od(prog_id)
   rescue Exception => e
     @log.error "Error downloading program: #{e.message}"
   end
 end
-
