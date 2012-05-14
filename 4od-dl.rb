@@ -4,6 +4,7 @@ require 'hpricot'
 require 'crypt/blowfish'
 require 'base64'
 require 'open-uri'
+require 'optparse'
 
 @log = Logger.new(STDOUT)
 @log.sev_threshold = Logger::INFO
@@ -21,12 +22,9 @@ def decode_token(token)
   decrypted_token = ''
 
   while position < encryptedBytes.length
-    @log.debug "decrypting from #{position} to #{position + 7}"
     decrypted_token += blowfish.decrypt_block(encryptedBytes[position..position + 7]);
     position += 8
   end
-
-  @log.debug "position: #{position} length #{encryptedBytes.length} decrypted length #{decrypted_token.length}"
 
   npad = decrypted_token.slice(-1)
   if (npad > 0 && npad < 9)
@@ -38,7 +36,7 @@ end
 
 
 #download 4od
-def download_4od(prog_id)
+def download_4od(prog_id, out_dir)
   #1. Read the AIS data from C4. This gives the info required to get the flv via rtmpdump
   url = "http://ais.channel4.com/asset/#{prog_id}"
   begin
@@ -71,7 +69,7 @@ def download_4od(prog_id)
     slist = (doc/"//slist").text
     auth = "auth=#{decoded_token}&aifp=#{fingerprint}&slist=#{slist}"
 
-    rtmpUrl = streamUri.match('(.*?)mp4:')[1].gsub(".com/",".com:1935/")
+    rtmpUrl = streamUri.match('(.*?)mp4:')[1].gsub(".com/",".com:1935/")    
     rtmpUrl += "?ovpfv=1.1&" + auth
 
     app = streamUri.match('.com/(.*?)mp4:')[1]
@@ -79,8 +77,11 @@ def download_4od(prog_id)
 
     playpath = streamUri.match('.*?(mp4:.*)')[1]
     playpath += "?" + auth
+    
   end
 
+  @log.debug "rtmpUrl: #{rtmpUrl} app: #{app} playpath: #{playpath}"
+    
   #read program data to generate the filename
   url = "http://www.channel4.com/programmes/asset/#{prog_id}"
   begin
@@ -125,6 +126,8 @@ def download_4od(prog_id)
   end
 
   out_file.gsub!(/[^0-9A-Za-z.\-]/, '_') #replace non alphanumerics with underscores
+  
+  out_file = File.join(out_dir, out_file)
 
   #build rtmpdump command
   command = "rtmpdump --rtmp \"#{rtmpUrl}\" "
@@ -155,7 +158,7 @@ def download_4od(prog_id)
   @log.info "Mp4 created. Tagging."
 
   fullTitle = "#{episodeNumber}. #{episodeTitle}"
-  atp_command = "AtomicParsley #{Dir.pwd}/#{out_file}.mp4 --TVNetwork \"Channel4/4od\" --TVShowName \"#{brandTitle}\" --TVSeasonNum #{seriesNumber} --TVEpisodeNum #{episodeNumber} --stik \"TV Show\" --description \"#{desc}\" --TVEpisode \"#{epId}\" --title \"#{fullTitle}\" --overWrite"
+  atp_command = "AtomicParsley #{out_file}.mp4 --TVNetwork \"Channel4/4od\" --TVShowName \"#{brandTitle}\" --TVSeasonNum #{seriesNumber} --TVEpisodeNum #{episodeNumber} --stik \"TV Show\" --description \"#{desc}\" --TVEpisode \"#{epId}\" --title \"#{fullTitle}\" --overWrite"
 
   @log.debug "#{atp_command}"
   success = system(atp_command)
@@ -170,15 +173,37 @@ def download_4od(prog_id)
 end
 
 
-if ARGV.length == 0 || ARGV[0] == '-h'
-  puts "4od-dl.rb [prog_id,prog_id]"
-  puts "Downloads a program from 4od"
-  puts "prog_id is the 7 digit program ID that you find after the hash in the URL (e.g. 3333316)"
-  puts "To specify multiple prog_ids, separate with a comma"
+#Parse parameters (only -p is required)
+hash_options = {}
+optparse = OptionParser.new do |opts|
+  opts.banner = "Usage: 4od-dl [options]"
+  opts.on('-p', '--programids ID1,ID2,ID3', "Program IDs to download - this is the 7 digit program ID that you find after the hash in the URL (e.g. 3333316)") do |v|
+    hash_options[:pids] = v
+  end
+  hash_options[:outdir] = Dir.pwd
+  opts.on('-o', '--outdir PATH', "Directory to save files to (default = pwd)") do |v|
+    hash_options[:outdir] = v
+  end
+  opts.on('-h', '--help', 'Display this help') do 
+    puts opts
+    exit
+  end
+end
+
+optparse.parse!
+
+if hash_options[:pids].nil? 
+  puts "Mandatory parameter -p not specified."
+  puts optparse
+  exit 1  
+end
+
+if !File.directory?(hash_options[:outdir])
+  @log.error "Cannot find given output directory #{hash_options[:outdir]}. Exiting."
   exit 1
 end
 
-
+#Given valid arguments. Check for pre-reqs
 @log.debug "looking for rtmpdump"
 `which rtmpdump`
 if not $?.success?
@@ -200,12 +225,8 @@ if not $?.success?
   exit 1
 end
 
-
-
-prog_ids = ARGV[0]
-prog_ids = prog_ids.split(",")
-
-prog_ids.each do |prog_id|
+#Download!
+hash_options[:pids].each do |prog_id|
   begin #first check it is a valid integer prog_id
     Integer(prog_id)
   rescue
@@ -214,8 +235,9 @@ prog_ids.each do |prog_id|
 
   #now download
   begin
-    download_4od(prog_id)
+    download_4od(prog_id,hash_options[:outdir])
   rescue Exception => e
     @log.error "Error downloading program: #{e.message}"
+    @log.error "#{e.backtrace.join("\n")}"
   end
 end

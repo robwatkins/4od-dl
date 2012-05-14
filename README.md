@@ -3,6 +3,13 @@
 
 Ruby script to download, convert and tag stuff from 4od.
 
+Supported Platforms
+===================
+
+This script has been tested on OS X 10.7 (Lion). I imagine it will work on older versions of OS X and perhaps on Linux too, but I've not tested it. 
+
+It definitely won't run on Windows but other than the hardcoded 'which' calls to find rtmpdump/ffmpeg/AtomicParsley it should probably work. Feel free to have a go and send a pull request :).  
+
 Pre-Requisites
 =========
 
@@ -21,9 +28,9 @@ It also uses the following gems that you must install (I will sort out a Gemfile
 Usage
 =====
 
-ruby 4od-dl.rb ProgID1,ProgID2,ProgID3
-
-progIdsArray is an array of program IDs from 4od. To get these simply visit 4od, find the program you want to play and then note the digits after the hash in the URL. 
+Usage: 4od-dl [options]
+    -p, --programids ID1,ID2,ID3     Program IDs to download - this is the 7 digit program ID that you find after the hash in the URL (e.g. 3333316)
+    -o, --outdir PATH                Directory to save files to (default = pwd)
 
 For instance the ID for the following programme is 3264880: http://www.channel4.com/programmes/grand-designs/4od#3264880
 
@@ -32,8 +39,9 @@ To Do
 
 This is a pretty rough hack so I'd like to add (in no order):
 
-* Ability to download to another directory than the one you're running 4od-dl in
 * Basic text-based PVR functionality to find programmes to download
 * More control over the filename
-* Remove the .flv once downloading is complete
+* Use a Gemfile to manage Gem dependencies
+* ~~Ability to download to another directory than the one you're running 4od-dl in~~ **Done 14th May**
+* ~~Remove the .flv once downloading is complete~~ **Done 14th May**
 
