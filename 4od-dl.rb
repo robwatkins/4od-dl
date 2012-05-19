@@ -148,7 +148,9 @@ def download_4od(prog_id, out_dir)
 
   @log.info "Download done. Converting to mp4."
 
-  ffmpeg_command ="ffmpeg -i #{out_file}.flv -vcodec copy -acodec copy #{out_file}.mp4"
+  #There is an annoying bug in later versions of ffmpeg related to playing MP4s on a PS3 - during playback the video skips and has no sound so is completely unwatchable.
+  #Remapping the audio codec to AAC fixes it. I tested this with ffmpeg 0.10.3
+  ffmpeg_command ="ffmpeg -i #{out_file}.flv -strict experimental -vcodec copy -acodec aac #{out_file}.mp4"
   success = system(ffmpeg_command)
 
   if not success
@@ -168,7 +170,7 @@ def download_4od(prog_id, out_dir)
   end
   
   @log.debug "Deleting #{out_file}.flv"
-  File.delete("#{out_file}.flv")
+  #File.delete("#{out_file}.flv")
   
 end
 

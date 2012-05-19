@@ -28,9 +28,9 @@ It also uses the following gems that you must install (I will sort out a Gemfile
 Usage
 =====
 
-Usage: 4od-dl [options]
-    -p, --programids ID1,ID2,ID3     Program IDs to download - this is the 7 digit program ID that you find after the hash in the URL (e.g. 3333316)
-    -o, --outdir PATH                Directory to save files to (default = pwd)
+	Usage: 4od-dl [options]
+    	-p, --programids ID1,ID2,ID3     Program IDs to download - this is the 7 digit program ID that you find after the hash in the URL (e.g. 3333316)
+    	-o, --outdir PATH                Directory to save files to (default = pwd)
 
 For instance the ID for the following programme is 3264880: http://www.channel4.com/programmes/grand-designs/4od#3264880
 
