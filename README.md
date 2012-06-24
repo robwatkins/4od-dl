@@ -42,6 +42,7 @@ This is a pretty rough hack so I'd like to add (in no order):
 * Basic text-based PVR functionality to find programmes to download
 * More control over the filename
 * Use a Gemfile to manage Gem dependencies
+* Support downloads of .f4m files
 * ~~Ability to download to another directory than the one you're running 4od-dl in~~ **Done 14th May**
 * ~~Remove the .flv once downloading is complete~~ **Done 14th May**
 

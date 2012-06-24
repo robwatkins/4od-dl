@@ -7,7 +7,7 @@ require 'open-uri'
 require 'optparse'
 
 @log = Logger.new(STDOUT)
-@log.sev_threshold = Logger::INFO
+@log.sev_threshold = Logger::DEBUG
 
 #Method to decode an auth token for use with rtmpdump
 #Idea mostly taken from http://code.google.com/p/nibor-xbmc-repo/source/browse/trunk/plugin.video.4od/fourOD_token_decoder.py
@@ -170,7 +170,7 @@ def download_4od(prog_id, out_dir)
   end
   
   @log.debug "Deleting #{out_file}.flv"
-  #File.delete("#{out_file}.flv")
+  File.delete("#{out_file}.flv")
   
 end
 
@@ -228,7 +228,7 @@ if not $?.success?
 end
 
 #Download!
-hash_options[:pids].each do |prog_id|
+hash_options[:pids].split(",").each do |prog_id|
   begin #first check it is a valid integer prog_id
     Integer(prog_id)
   rescue
