@@ -1,3 +1,6 @@
+# 4od-dl version 0.2. https://github.com/robwatkins/4od-dl
+
+require 'rubygems'
 require 'logger'
 require 'hpricot'
 require 'crypt/blowfish'
@@ -239,6 +242,10 @@ optparse = OptionParser.new do |opts|
   hash_options[:outdir] = Dir.pwd
   opts.on('-o', '--outdir PATH', "Directory to save files to (default = pwd)") do |v|
     hash_options[:outdir] = v
+  end
+  opts.on('-v', '--version', 'Display version information') do
+    puts "4od-dl version 0.2 (11-Dec-2012)"
+    exit
   end
   opts.on('-h', '--help', 'Display this help') do
     puts opts
