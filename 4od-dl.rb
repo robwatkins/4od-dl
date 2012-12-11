@@ -9,7 +9,7 @@ require 'open-uri'
 require 'optparse'
 
 @log = Logger.new(STDOUT)
-@log.sev_threshold = Logger::DEBUG
+@log.sev_threshold = Logger::INFO
 
 #Search range determines how far before/after the program ID to search for a MP4 file when the original program ID resolves to a f4m.
 @search_range = 5 
@@ -193,7 +193,7 @@ def download_4od(prog_id, out_dir)
   command += "-o \"#{out_file}.flv\" "
   command += '-C O:1 -C O:0 '
   command += '--flashVer "WIN 10,3,183,7" '
-  command += '--swfVfy "http://www.channel4.com/static/programmes/asset/flash/swf/4odplayer_am2.swf" '
+  command += '--swfVfy "http://www.channel4.com/static/programmes/asset/flash/swf/4odplayer-11.34.1.swf" '
   @log.debug command
 
   @log.info "Downloading file for #{prog_id} - saving to #{out_file}.flv"
