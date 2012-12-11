@@ -74,10 +74,10 @@ def get_prog_id(prog_id)
   episodeId =  (doc/"//programmenumber").text
 
   if (fileType == "mp4")
-    @log.info "AIS data for Program ID given resolves to a MP4"
+    @log.info "AIS data for Program ID #{prog_id} resolves to a MP4"
     return prog_id
   elsif (fileType == "f4m")
-    @log.info "#{prog_id} AIS data returns F4M file. Searching for mp4..."
+    @log.info "AIS data for program ID #{prog_id} returns F4M file. Searching for a MP4 version..."
     for i in ((prog_id.to_i - @search_range)..(prog_id.to_i + @search_range))
       if i != prog_id.to_i and (search_prog_id(i,programName, episodeId))
         @log.info "Found MP4 match: program ID #{i}"
@@ -95,7 +95,7 @@ end
 def search_prog_id(prog_id, programName, episodeId)
   begin
     
-    @log.debug "trying id #{prog_id}"
+    @log.debug "Trying Program ID #{prog_id}"
     doc = download_ais(prog_id)
     streamUri =  (doc/"//streamuri").text
     fileType = streamUri[-3..-1]  
@@ -196,7 +196,7 @@ def download_4od(prog_id, out_dir)
   command += '--swfVfy "http://www.channel4.com/static/programmes/asset/flash/swf/4odplayer-11.34.1.swf" '
   @log.debug command
 
-  @log.info "Downloading file for #{prog_id} - saving to #{out_file}.flv"
+  @log.info "Downloading file for Program ID #{prog_id} - saving to #{out_file}.flv"
   success = system(command)
 
   if not success
@@ -299,6 +299,7 @@ hash_options[:pids].split(",").each do |prog_id|
   #now download
   begin
     #Attempt to get a program ID which resolves to a MP4 file for this program, then download the file
+    @log.info "Downloading program #{prog_id}..."
     new_prog_id = get_prog_id(prog_id)
     download_4od(new_prog_id,hash_options[:outdir])
   rescue Exception => e
