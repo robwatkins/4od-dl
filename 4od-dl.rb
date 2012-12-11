@@ -12,7 +12,7 @@ require 'optparse'
 @log.sev_threshold = Logger::INFO
 
 #Search range determines how far before/after the program ID to search for a MP4 file when the original program ID resolves to a f4m.
-@search_range = 5 
+@search_range = 10
 
 #Method to decode an auth token for use with rtmpdump
 #Idea mostly taken from http://code.google.com/p/nibor-xbmc-repo/source/browse/trunk/plugin.video.4od/fourOD_token_decoder.py
