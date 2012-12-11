@@ -1,4 +1,3 @@
-require 'rubygems'
 require 'logger'
 require 'hpricot'
 require 'crypt/blowfish'
@@ -8,6 +7,9 @@ require 'optparse'
 
 @log = Logger.new(STDOUT)
 @log.sev_threshold = Logger::DEBUG
+
+#Search range determines how far before/after the program ID to search for a MP4 file when the original program ID resolves to a f4m.
+@search_range = 5 
 
 #Method to decode an auth token for use with rtmpdump
 #Idea mostly taken from http://code.google.com/p/nibor-xbmc-repo/source/browse/trunk/plugin.video.4od/fourOD_token_decoder.py
@@ -35,17 +37,82 @@ def decode_token(token)
 end
 
 
+#AIS data - used to get stream data
+def download_ais(prog_id)
+  return download_data("http://ais.channel4.com/asset/#{prog_id}")
+end
+
+#asset info used for episode related information
+def download_asset(prog_id)
+  return download_data("http://www.channel4.com/programmes/asset/#{prog_id}")
+end
+
+#Program guide used for synopsis
+def download_progguide(progGuideUrl)
+  return download_data("http://www.channel4.com#{progGuideUrl}")
+end
+
+def download_data(url)
+  begin
+    doc = open(url) { |f| Hpricot(f) }
+    return doc
+  rescue OpenURI::HTTPError => the_error
+    raise "Cannot download from url #{url}. Error is: #{the_error.message}"
+  end
+end
+
+#download 4od
+def get_prog_id(prog_id)
+
+  doc = download_ais(prog_id)
+  streamUri =  (doc/"//streamuri").text
+  fileType = streamUri[-3..-1]
+  programName =  (doc/"//brandtitle").text
+  episodeId =  (doc/"//programmenumber").text
+
+  if (fileType == "mp4")
+    @log.info "AIS data for Program ID given resolves to a MP4"
+    return prog_id
+  elsif (fileType == "f4m")
+    @log.info "#{prog_id} AIS data returns F4M file. Searching for mp4..."
+    for i in ((prog_id.to_i - @search_range)..(prog_id.to_i + @search_range))
+      if i != prog_id.to_i and (search_prog_id(i,programName, episodeId))
+        @log.info "Found MP4 match: program ID #{i}"
+        return i
+      end
+    end
+  end
+
+  #Either can't find a mp4 to download or wrong asset ID given
+  raise "Unable to find a program to download :-("
+end
+
+
+#Search for an alternative program ID. Will return true if it finds a matching program (on episode ID and Program Name with a )
+def search_prog_id(prog_id, programName, episodeId)
+  begin
+    
+    @log.debug "trying id #{prog_id}"
+    doc = download_ais(prog_id)
+    streamUri =  (doc/"//streamuri").text
+    fileType = streamUri[-3..-1]  
+    match_programName =  (doc/"//brandtitle").text
+    match_episodeId =  (doc/"//programmenumber").text
+    @log.debug "found program #{match_programName} and #{match_episodeId}, type #{streamUri[-3..-1]}"
+
+    return (fileType == "mp4" and programName == match_programName and episodeId == match_episodeId)
+  rescue
+    return false
+  end
+
+end
+
 #download 4od
 def download_4od(prog_id, out_dir)
-  #1. Read the AIS data from C4. This gives the info required to get the flv via rtmpdump
-  url = "http://ais.channel4.com/asset/#{prog_id}"
-  begin
-      doc = open(url) { |f| Hpricot(f) }
-  rescue OpenURI::HTTPError => the_error
-    @log.error "Cannot download from url #{url}. Error is: #{the_error.message}"
-    return
-  end
   
+  #1. Read the AIS data from C4. This gives the info required to get the flv via rtmpdump
+  doc = download_ais(prog_id)
+
   #Parse it - the inspiration for this comes from http://code.google.com/p/nibor-xbmc-repo/ too.
   token =  (doc/"//token").text
   epid =  (doc/"//e").text
@@ -69,7 +136,7 @@ def download_4od(prog_id, out_dir)
     slist = (doc/"//slist").text
     auth = "auth=#{decoded_token}&aifp=#{fingerprint}&slist=#{slist}"
 
-    rtmpUrl = streamUri.match('(.*?)mp4:')[1].gsub(".com/",".com:1935/")    
+    rtmpUrl = streamUri.match('(.*?)mp4:')[1].gsub(".com/",".com:1935/")
     rtmpUrl += "?ovpfv=1.1&" + auth
 
     app = streamUri.match('.com/(.*?)mp4:')[1]
@@ -77,20 +144,13 @@ def download_4od(prog_id, out_dir)
 
     playpath = streamUri.match('.*?(mp4:.*)')[1]
     playpath += "?" + auth
-    
+
   end
 
   @log.debug "rtmpUrl: #{rtmpUrl} app: #{app} playpath: #{playpath}"
-    
-  #read program data to generate the filename
-  url = "http://www.channel4.com/programmes/asset/#{prog_id}"
-  begin
-      assetInfo = open(url) { |f| Hpricot(f) }
-  rescue OpenURI::HTTPError => the_error
-    @log.error "Cannot download from url #{url}. Error is: #{the_error.message}"
-    return
-  end
-  
+
+  assetInfo = download_asset(prog_id)
+
   episodeNumber = (assetInfo/"//episodenumber").text
   seriesNumber = (assetInfo/"//seriesnumber").text
   brandTitle = (assetInfo/"//brandtitle").text
@@ -98,16 +158,10 @@ def download_4od(prog_id, out_dir)
 
   #progGuideUrl is used to pull out metadata from the CH4 website
   progGuideUrl = (assetInfo/"//episodeguideurl").text
-
-  #read program guide to get additional metadata
-  url = "http://www.channel4.com#{progGuideUrl}"
-  begin
-      seriesInfo = open(url) { |f| Hpricot(f) }
-  rescue OpenURI::HTTPError => the_error
-    @log.error "Cannot download from url #{url}. Error is: #{the_error.message}"
-    return
-  end
   
+  #read program guide to get additional metadata
+  seriesInfo = download_progguide(progGuideUrl)
+
   synopsisElem = seriesInfo.at("//meta[@name='synopsis']")
   desc = synopsisElem.nil? ? "" : synopsisElem['content']
 
@@ -126,9 +180,9 @@ def download_4od(prog_id, out_dir)
   end
 
   out_file.gsub!(/[^0-9A-Za-z.\-]/, '_') #replace non alphanumerics with underscores
-  
-  out_file = File.join(out_dir, out_file)
 
+  out_file = File.join(out_dir, out_file)
+  
   #build rtmpdump command
   command = "rtmpdump --rtmp \"#{rtmpUrl}\" "
   command += "--app \"#{app}\" "
@@ -168,10 +222,10 @@ def download_4od(prog_id, out_dir)
   if not success
     raise "Something went wrong running AtomicParsley :(. Your file may not be properly tagged."
   end
-  
+
   @log.debug "Deleting #{out_file}.flv"
   File.delete("#{out_file}.flv")
-  
+
 end
 
 
@@ -186,7 +240,7 @@ optparse = OptionParser.new do |opts|
   opts.on('-o', '--outdir PATH', "Directory to save files to (default = pwd)") do |v|
     hash_options[:outdir] = v
   end
-  opts.on('-h', '--help', 'Display this help') do 
+  opts.on('-h', '--help', 'Display this help') do
     puts opts
     exit
   end
@@ -194,10 +248,10 @@ end
 
 optparse.parse!
 
-if hash_options[:pids].nil? 
+if hash_options[:pids].nil?
   puts "Mandatory parameter -p not specified."
   puts optparse
-  exit 1  
+  exit 1
 end
 
 if !File.directory?(hash_options[:outdir])
@@ -237,7 +291,9 @@ hash_options[:pids].split(",").each do |prog_id|
 
   #now download
   begin
-    download_4od(prog_id,hash_options[:outdir])
+    #Attempt to get a program ID which resolves to a MP4 file for this program, then download the file
+    new_prog_id = get_prog_id(prog_id)
+    download_4od(new_prog_id,hash_options[:outdir])
   rescue Exception => e
     @log.error "Error downloading program: #{e.message}"
     @log.error "#{e.backtrace.join("\n")}"
