@@ -228,7 +228,7 @@ class FourODProgramDownloader
   #Remapping the audio codec to AAC fixes it. I tested this with ffmpeg 0.10.3
   def ffmpeg
     @log.info "Running ffmpeg to convert to MP4"
-    ffmpeg_command ="ffmpeg -i \"#{@out_file}.flv\" -strict experimental -vcodec copy -acodec aac \"#{@out_file}.mp4\""
+    ffmpeg_command ="ffmpeg -y -i \"#{@out_file}.flv\" -strict experimental -vcodec copy -acodec aac \"#{@out_file}.mp4\""
     success = system(ffmpeg_command)
 
     if not success
@@ -259,8 +259,8 @@ class FourODProgramDownloader
     if @metadata[:imagePath] != ""
       begin
         image_path = File.join(@out_dir,File.basename(@metadata[:imagePath]))
-        download_image("http://www.chaonnel4.com#{@metadata[:imagePath]}", image_path)
-        atp_command += " --artwork #{image_name}"
+        download_image("http://www.channel4.com#{@metadata[:imagePath]}", image_path)
+        atp_command += " --artwork #{image_path}"
       rescue
         @log.warn "Error downloading thumbnail - video will be tagged without thumbnail"
       end
