@@ -153,10 +153,10 @@ class FourODProgramDownloader
     get_metadata
     check_prog_id
     generate_filename
-    #download_stream
-    #ffmpeg
+    download_stream
+    ffmpeg
     tag
-    #cleanup
+    cleanup
   end
 
 
