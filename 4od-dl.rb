@@ -386,7 +386,7 @@ hash_options[:pids].split(",").each do |prog_id|
     #Attempt to get a program ID which resolves to a MP4 file for this program, then download the file
     @log.info "Downloading program #{prog_id}..."
     fourOD = FourODProgramDownloader.new(prog_id, @log,hash_options[:outdir])
-    fourOD.download()
+    fourOD.download
   rescue Exception => e
     @log.error "Error downloading program: #{e.message}"
     @log.error "#{e.backtrace.join("\n")}"
