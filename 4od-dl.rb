@@ -12,7 +12,7 @@ require 'optparse'
 @log.sev_threshold = Logger::INFO
 
 class FourODProgramDownloader
-  def initialize(program_id, logger, out_path)
+  def initialize(program_id, logger, out_path, remux)
     #Search range determines how far before/after the program ID to search for a MP4 file when the original program ID resolves to a f4m.
     @search_range = 10
     @out_dir = out_path
@@ -21,6 +21,7 @@ class FourODProgramDownloader
     @out_file = nil
     @log = logger
     @metadata = Hash.new
+    @remux = remux
   end
 
   def download_image(url, out_file_name)
@@ -228,7 +229,11 @@ class FourODProgramDownloader
   #Remapping the audio codec to AAC fixes it. I tested this with ffmpeg 0.10.3
   def ffmpeg
     @log.info "Running ffmpeg to convert to MP4"
-    ffmpeg_command ="ffmpeg -y -i \"#{@out_file}.flv\" -strict experimental -vcodec copy -acodec aac \"#{@out_file}.mp4\""
+    ffmpegOutOptions = "-strict experimental -vcodec copy -acodec aac"
+    if @remux
+      ffmpegOutOptions = "-vcodec copy -acodec copy"
+    end      
+    ffmpeg_command ="ffmpeg -y -i \"#{@out_file}.flv\"  #{ffmpegOutOptions} \"#{@out_file}.mp4\""
     success = system(ffmpeg_command)
 
     if not success
@@ -325,6 +330,9 @@ optparse = OptionParser.new do |opts|
   opts.on('-o', '--outdir PATH', "Directory to save files to (default = pwd)") do |v|
     hash_options[:outdir] = v
   end
+  opts.on('-r', '--remux', "Copy video/audio streams from FLV to MP4 - do not transcode audio") do |v|
+    hash_options[:remux] = v
+  end
   opts.on('-v', '--version', 'Display version information') do
     puts "4od-dl version 0.2 (11-Dec-2012)"
     exit
@@ -385,7 +393,7 @@ hash_options[:pids].split(",").each do |prog_id|
   begin
     #Attempt to get a program ID which resolves to a MP4 file for this program, then download the file
     @log.info "Downloading program #{prog_id}..."
-    fourOD = FourODProgramDownloader.new(prog_id, @log,hash_options[:outdir])
+    fourOD = FourODProgramDownloader.new(prog_id, @log,hash_options[:outdir],hash_options[:remux])
     fourOD.download
   rescue Exception => e
     @log.error "Error downloading program: #{e.message}"
