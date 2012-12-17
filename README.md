@@ -57,6 +57,10 @@ The only workaround I have so far is to re-encode the file using [handbrake](htt
 Changelog
 =========
 
+v0.4 (beta) (22 December 2012):
+
+* Added --search-range / -s parameter to control the search range used to find a MP4 version when the prog ID points to a FLV. Default is 10.
+
 v0.3 (15 December 2012):
 
 * Improved error handling - now ignores some non-fatal errors when downloading a program

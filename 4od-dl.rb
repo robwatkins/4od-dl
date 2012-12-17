@@ -338,10 +338,10 @@ optparse = OptionParser.new do |opts|
   hash_options[:searchrange] = @default_search_range
   opts.on('-s', '--search-range N', Integer, "Search range to find MP4 versions of a program (default = #{@default_search_range})") do |v|
     hash_options[:searchrange] = v
-    raise OptionParser::InvalidArgument, "#{v} invalid (must be > 0)" if v < 0
+    raise OptionParser::InvalidArgument, "#{v} invalid (must be >= 0)" if v < 0
   end
   opts.on('-v', '--version', 'Display version information') do
-    puts "4od-dl version 0.3 (16-Dec-2012)"
+    puts "4od-dl version 0.4beta (22-Dec-2012)"
     exit
   end
   opts.on('-d', '--debug', 'Show advanced debugging information') do
