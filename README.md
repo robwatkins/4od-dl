@@ -31,6 +31,10 @@ Usage
 	Usage: 4od-dl [options]
     	-p, --programids ID1,ID2,ID3     Program IDs to download - this is the 7 digit program ID that you find after the hash in the URL (e.g. 3333316)
     	-o, --outdir PATH                Directory to save files to (default = pwd)
+	    -r, --remux                      Copy video/audio streams from FLV to MP4 - do not transcode audio
+	    -v, --version                    Display version information
+	    -d, --debug                      Show advanced debugging information
+	    -h, --help                       Display help
 
 For instance the ID for the following programme is 3264880: http://www.channel4.com/programmes/grand-designs/4od#3264880
 
@@ -47,7 +51,7 @@ Copying to your iPad
 
 I have had trouble copying some downloaded programmes to my iPad - iTunes just refuses to transfer them. I think it is because the AVC level of the downloaded file is too high (some of the downloads are High@4.1). I have tried changing the AVC level using [subler](http://code.google.com/p/subler/) however it still does not work, most likely because the video stream uses features that the iPad does not support.
 
-The only workaround I have so far is to re-encode the file using [handbrake](http://handbrake.fr/). See issue 4
+The only workaround I have so far is to re-encode the file using [handbrake](http://handbrake.fr/) (or similar). See [issue 4](https://github.com/robwatkins/4od-dl/issues/4) for more information.
 
 Changelog
 =========
