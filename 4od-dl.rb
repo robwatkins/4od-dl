@@ -260,7 +260,7 @@ class FourODProgramDownloader
       begin
         image_path = File.join(@out_dir,File.basename(@metadata[:imagePath]))
         download_image("http://www.channel4.com#{@metadata[:imagePath]}", image_path)
-        atp_command += " --artwork #{image_path}"
+        atp_command += " --artwork \"#{image_path}\""
       rescue
         @log.warn "Error downloading thumbnail - video will be tagged without thumbnail"
       end
