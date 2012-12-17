@@ -326,7 +326,7 @@ optparse = OptionParser.new do |opts|
     hash_options[:outdir] = v
   end
   opts.on('-v', '--version', 'Display version information') do
-    puts "4od-dl version 0.2 (11-Dec-2012)"
+    puts "4od-dl version 0.3 (16-Dec-2012)"
     exit
   end
   opts.on('-d', '--debug', 'Show advanced debugging information') do
