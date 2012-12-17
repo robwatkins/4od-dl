@@ -11,10 +11,12 @@ require 'optparse'
 @log = Logger.new(STDOUT)
 @log.sev_threshold = Logger::INFO
 
+@default_search_range = 10 #how far before/after the program ID to search for a MP4 file when the original program ID resolves to a f4m.
+
+
 class FourODProgramDownloader
-  def initialize(program_id, logger, out_path, remux)
-    #Search range determines how far before/after the program ID to search for a MP4 file when the original program ID resolves to a f4m.
-    @search_range = 10
+  def initialize(program_id, logger, out_path, remux, search_range)
+    @search_range = search_range
     @out_dir = out_path
     @program_id = program_id
     @mp4_program_id = nil
@@ -102,7 +104,7 @@ class FourODProgramDownloader
       @mp4_program_id = @program_id
       return
     elsif (@metadata[:fileType] == "f4m")
-      @log.info "AIS data for program ID #{@program_id} returns F4M file. Searching for a MP4 version..."
+      @log.info "AIS data for program ID #{@program_id} returns F4M file. Searching for a MP4 version... (search range: #{@search_range})"
       for i in ((@program_id.to_i - @search_range)..(@program_id.to_i + @search_range))
         if i != @program_id.to_i and (search_prog_id(i, @metadata[:programName], @metadata[:episodeId]))
           @log.info "Found MP4 match: program ID #{i}"
@@ -113,7 +115,7 @@ class FourODProgramDownloader
     end
 
     #Either can't find a mp4 to download or wrong asset ID given
-    raise "Unable to find a MP4 version of the program to download :-("
+    raise "Unable to find a MP4 version of the program to download :(. Try increasing the search range (--search-range N)."
   end
 
 
@@ -333,6 +335,11 @@ optparse = OptionParser.new do |opts|
   opts.on('-r', '--remux', "Copy video/audio streams from FLV to MP4 - do not transcode audio") do |v|
     hash_options[:remux] = v
   end
+  hash_options[:searchrange] = @default_search_range
+  opts.on('-s', '--search-range N', Integer, "Search range to find MP4 versions of a program (default = #{@default_search_range})") do |v|
+    hash_options[:searchrange] = v
+    raise OptionParser::InvalidArgument, "#{v} invalid (must be > 0)" if v < 0
+  end
   opts.on('-v', '--version', 'Display version information') do
     puts "4od-dl version 0.3 (16-Dec-2012)"
     exit
@@ -346,7 +353,12 @@ optparse = OptionParser.new do |opts|
   end
 end
 
-optparse.parse!
+begin
+  optparse.parse!
+rescue OptionParser::InvalidArgument => e
+  puts "ERROR: #{e.message}"
+  exit 1
+end
 
 if hash_options[:pids].nil?
   puts "Mandatory parameter -p not specified."
@@ -393,10 +405,10 @@ hash_options[:pids].split(",").each do |prog_id|
   begin
     #Attempt to get a program ID which resolves to a MP4 file for this program, then download the file
     @log.info "Downloading program #{prog_id}..."
-    fourOD = FourODProgramDownloader.new(prog_id, @log,hash_options[:outdir],hash_options[:remux])
+    fourOD = FourODProgramDownloader.new(prog_id, @log,hash_options[:outdir],hash_options[:remux],hash_options[:searchrange])
     fourOD.download
   rescue Exception => e
     @log.error "Error downloading program: #{e.message}"
-    @log.error "#{e.backtrace.join("\n")}"
+    @log.debug "#{e.backtrace.join("\n")}"
   end
 end

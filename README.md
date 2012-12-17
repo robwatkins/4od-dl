@@ -32,6 +32,7 @@ Usage
     	-p, --programids ID1,ID2,ID3     Program IDs to download - this is the 7 digit program ID that you find after the hash in the URL (e.g. 3333316)
     	-o, --outdir PATH                Directory to save files to (default = pwd)
 	    -r, --remux                      Copy video/audio streams from FLV to MP4 - do not transcode audio
+    	-s, --search-range N             Search range to find MP4 versions of a program (default = 10)
 	    -v, --version                    Display version information
 	    -d, --debug                      Show advanced debugging information
 	    -h, --help                       Display help
