@@ -1,4 +1,4 @@
-# 4od-dl version 0.3. https://github.com/robwatkins/4od-dl
+# 4od-dl version 0.4 (beta). https://github.com/robwatkins/4od-dl
 
 require 'rubygems'
 require 'logger'
@@ -389,7 +389,7 @@ end
 @log.debug "looking for AtomicParsley"
 `which AtomicParsley`
 if not $?.success?
-  @log.error "Cannot find AtomicParskey on your path. Please install and try again (http://atomicparsley.sourceforge.net/). After extracting copy it to somewhere in your path"
+  @log.error "Cannot find AtomicParsley on your path. Please install and try again (http://atomicparsley.sourceforge.net/). After extracting copy it to somewhere in your path"
   exit 1
 end
 
