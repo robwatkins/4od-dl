@@ -59,7 +59,7 @@ Changelog
 
 v0.4 (beta) (22 December 2012):
 
-* Added --search-range / -s parameter to control the search range used to find a MP4 version when the prog ID points to a FLV. Default is 10.
+* Added --search-range / -s parameter to control the search range used to find a MP4 version when the prog ID points to a F4M. Default is 10.
 
 v0.3 (15 December 2012):
 
