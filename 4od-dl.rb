@@ -1,4 +1,4 @@
-# 4od-dl version 0.4. https://github.com/robwatkins/4od-dl
+# 4od-dl version 0.5beta. https://github.com/robwatkins/4od-dl
 
 require 'rubygems'
 require 'logger'
@@ -7,6 +7,8 @@ require 'crypt/blowfish'
 require 'base64'
 require 'open-uri'
 require 'optparse'
+require 'zlib'
+require 'net/http'
 
 @log = Logger.new(STDOUT)
 @log.sev_threshold = Logger::INFO
@@ -128,7 +130,7 @@ class FourODProgramDownloader
       fileType = streamUri[-3..-1]
       match_programName =  (doc/"//brandtitle").text
       match_episodeId =  (doc/"//programmenumber").text
-      @log.debug "found program #{match_programName} and #{match_episodeId}, type #{streamUri[-3..-1]}"
+      @log.debug "found program #{match_programName} epid #{match_episodeId}, type #{streamUri[-3..-1]}"
 
       return (fileType == "mp4" and programName == match_programName and episodeId == match_episodeId)
     rescue
@@ -202,8 +204,6 @@ class FourODProgramDownloader
 
     end
 
-    @log.debug "rtmpUrl: #{rtmpUrl} app: #{app} playpath: #{playpath}"
-
     #build rtmpdump command
     command = "rtmpdump --rtmp \"#{rtmpUrl}\" "
     command += "--app \"#{app}\" "
@@ -234,7 +234,7 @@ class FourODProgramDownloader
     ffmpegOutOptions = "-strict experimental -vcodec copy -acodec aac"
     if @remux
       ffmpegOutOptions = "-vcodec copy -acodec copy"
-    end      
+    end
     ffmpeg_command ="ffmpeg -y -i \"#{@out_file}.flv\"  #{ffmpegOutOptions} \"#{@out_file}.mp4\""
     success = system(ffmpeg_command)
 
@@ -318,14 +318,54 @@ class FourODProgramDownloader
     return decrypted_token
   end
 
-end
+end #FourODProgramDownloader
+
+class URLToPidConverter
+
+  def self.convert_url_to_pid(url)
+    @log = Logger.new(STDOUT)
+    @log.debug "Trying to convert #{url} to a PID.."
+    #Is it a URL that ends with #[0-9]+ ? If so just return the ID
+    if url.match /.*#([0-9]+$)/
+      prog_id = (url.match /.*#([0-9]+$)/)[1]
+    else
+      begin
+        #Work out the default episode
+        doc = Hpricot(http_get(url))
+        isDataCatchup = (doc/".brandTitle").first()["data-catchup"]
+        if(isDataCatchup == "true")
+          prog_id = (doc/".all-series > li").first().search(".episode-item:first")[0]["data-assetid"]
+        else
+          prog_id = (doc/".all-series > li").last().search(".episode-item:first")[0]["data-assetid"]
+        end
+      rescue
+        raise "Unable to determine program ID for URL #{url}"
+      end
+    end
+    @log.debug "Matched pid #{prog_id}"
+    prog_id
+  end
+
+  #Need to ungzip the content if necessary as some larger pages are sent back with mod_gzip encoding
+  def self.http_get(uri)
+    url = URI.parse uri
+    res = Net::HTTP.start(url.host, url.port) { |h| h.get(url.path) }
+    headers = res.to_hash
+    gzipped = headers['content-encoding'] && headers['content-encoding'][0] == "gzip"
+    content = gzipped ? Zlib::GzipReader.new(StringIO.new(res.body)).read : res.body
+    content
+  end
+
+  private_class_method :http_get
+end #end URLToPidConverter
+
 
 
 #Parse parameters (only -p is required)
 hash_options = {}
 optparse = OptionParser.new do |opts|
   opts.banner = "Usage: 4od-dl [options]"
-  opts.on('-p', '--programids ID1,ID2,ID3', "Program IDs to download - this is the 7 digit program ID that you find after the hash in the URL (e.g. 3333316)") do |v|
+  opts.on('-p', '--programids ID1,ID2,ID3', "Program IDs/URLs to download - either seven digit number after the hash in the URL, or the full URL from the 4od site") do |v|
     hash_options[:pids] = v
   end
   hash_options[:outdir] = Dir.pwd
@@ -341,7 +381,7 @@ optparse = OptionParser.new do |opts|
     raise OptionParser::InvalidArgument, "#{v} invalid (must be >= 0)" if v < 0
   end
   opts.on('-v', '--version', 'Display version information') do
-    puts "4od-dl version 0.4 (23-Jan-2013)"
+    puts "4od-dl version 0.5beta (10-Feb-2013)"
     exit
   end
   opts.on('-d', '--debug', 'Show advanced debugging information') do
@@ -393,19 +433,13 @@ if not $?.success?
   exit 1
 end
 
-#Download!
-hash_options[:pids].split(",").each do |prog_id|
-  begin #first check it is a valid integer prog_id
-    Integer(prog_id)
-  rescue
-    @log.error "Cannot parse program ID #{prog_id}. Is it a valid program ID?"
-  end
-
-  #now download
+hash_options[:pids].split(",").each do |asset_id|
   begin
-    #Attempt to get a program ID which resolves to a MP4 file for this program, then download the file
-    @log.info "Downloading program #{prog_id}..."
-    fourOD = FourODProgramDownloader.new(prog_id, @log,hash_options[:outdir],hash_options[:remux],hash_options[:searchrange])
+    @log.info "Downloading program #{asset_id}..."
+    if !asset_id.match /^[0-9]+$/
+      asset_id = URLToPidConverter.convert_url_to_pid asset_id
+    end
+    fourOD = FourODProgramDownloader.new(asset_id, @log,hash_options[:outdir],hash_options[:remux],hash_options[:searchrange])
     fourOD.download
   rescue Exception => e
     @log.error "Error downloading program: #{e.message}"

@@ -3,6 +3,7 @@
 
 Ruby script to download, convert and tag stuff from 4od.
 
+
 Supported Platforms
 ===================
 
@@ -29,7 +30,7 @@ Usage
 =====
 
 	Usage: 4od-dl [options]
-    	-p, --programids ID1,ID2,ID3     Program IDs to download - this is the 7 digit program ID that you find after the hash in the URL (e.g. 3333316)
+    	-p, --programids ID1,ID2,ID3     Program IDs/URLs to download (see below)
     	-o, --outdir PATH                Directory to save files to (default = pwd)
 	    -r, --remux                      Copy video/audio streams from FLV to MP4 - do not transcode audio
     	-s, --search-range N             Search range to find MP4 versions of a program (default = 10)
@@ -37,7 +38,19 @@ Usage
 	    -d, --debug                      Show advanced debugging information
 	    -h, --help                       Display help
 
-For instance the ID for the following programme is 3264880: http://www.channel4.com/programmes/grand-designs/4od#3264880
+
+Program IDs/URLs
+============
+
+Starting with 4od-dl v0.5 you can now pass in either a specific program ID or URL to download. In the case of a URL, 4od-dl will scrape the web page to try and determine the correct program ID. You can enter URLs with or without the program ID appended onto the end - both the examples below are acceptable input:
+
+ruby 4od-dl.rb -p http://www.channel4.com/programmes/richard-iii-the-king-in-the-car-park/4od 
+
+ruby 4od-dl.rb -p http://www.channel4.com/programmes/richard-iii-the-king-in-the-car-park/4od#3478419 
+
+It may not always be possible to convert the URL to a program ID so in case of failure use the program ID directly.
+
+A program ID is a 7 digit number which is appended onto the end of the URL when you try to watch the video in your browser. For instance the ID for the following programme is 3264880: http://www.channel4.com/programmes/grand-designs/4od#3264880. 
 
 
 F4M files
@@ -57,7 +70,12 @@ The only workaround I have so far is to re-encode the file using [handbrake](htt
 Changelog
 =========
 
-v0.4 (beta) (22 December 2012):
+v0.5 (10-February-2012)
+
+* Added ability to download using URLs as well as program IDs
+* Auto retry of failed downloads
+
+v0.4 (22 December 2012):
 
 * Added --search-range / -s parameter to control the search range used to find a MP4 version when the prog ID points to a F4M. Default is 10.
 
