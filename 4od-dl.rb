@@ -217,6 +217,18 @@ class FourODProgramDownloader
     @log.info "Downloading file for Program ID #{@mp4_program_id} - saving to #{@out_file}.flv"
     success = system(command)
 
+    if $?.exitstatus == 2
+           @log.info "received recoverable error so I'm now going to have 10 determined tries to finish the job"
+           command += '--resume'
+           maxTries=10
+           
+           begin
+                maxTries -= 1
+                success = system(command)
+                @log.info "#{maxTries} goes left"
+           end while not success || maxTries < 1
+    end
+
     if not success
       raise "Something went wrong running rtmpdump :(. Your file may not have downloaded."
     end
