@@ -14,7 +14,7 @@ require 'net/http'
 @log.sev_threshold = Logger::INFO
 
 @default_search_range = 10 #how far before/after the program ID to search for a MP4 file when the original program ID resolves to a f4m.
-
+@default_retry_count = 10 #retry count for failed downloads
 
 class FourODProgramDownloader
   def initialize(program_id, logger, out_path, remux, search_range)
@@ -218,15 +218,14 @@ class FourODProgramDownloader
     success = system(command)
 
     if $?.exitstatus == 2
-           @log.info "received recoverable error so I'm now going to have 10 determined tries to finish the job"
-           command += '--resume'
-           maxTries=10
-           
-           begin
-                maxTries -= 1
-                success = system(command)
-                @log.info "#{maxTries} goes left"
-           end while not success || maxTries < 1
+      @log.info "received recoverable error so I'm now going to have 10 determined tries to finish the job"
+      command += '--resume'
+      maxTries=@default_retry_count
+      begin
+        maxTries -= 1
+        success = system(command)
+        @log.info "#{maxTries} goes left"
+      end while not success || maxTries < 1
     end
 
     if not success
