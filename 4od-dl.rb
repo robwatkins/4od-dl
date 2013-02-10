@@ -211,7 +211,7 @@ class FourODProgramDownloader
     command += "-o \"#{@out_file}.flv\" "
     command += '-C O:1 -C O:0 '
     command += '--flashVer "WIN 10,3,183,7" '
-    command += '--swfVfy "http://www.channel4.com/static/programmes/asset/flash/swf/4odplayer-11.34.1.swf" '
+    command += '--swfVfy "http://www.channel4.com/static/programmes/asset/flash/swf/4odplayer-11.35.swf" '
     @log.debug command
 
     @log.info "Downloading file for Program ID #{@mp4_program_id} - saving to #{@out_file}.flv"
