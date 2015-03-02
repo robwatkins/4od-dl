@@ -1,3 +1,7 @@
+This script is broken and no longer works! Don't waste your time using it :)
+====================
+
+
 4od-dl
 ======
 
